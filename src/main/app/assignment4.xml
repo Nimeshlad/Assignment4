@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <db:mysql-config name="MySQL_Configuration" host="localhost" port="3306" user="root" password="root" database="test" doc:name="MySQL Configuration"/>
+    <flow name="assignment4Flow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/rollback" allowedMethods="POST" doc:name="HTTP"/>
+        <db:insert config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[INSERT 
+INTO EMPLOYEE
+VALUES
+(#[message.inboundProperties.'http.query.params'.EMPLOYEE_ID],
+ #[message.inboundProperties.'http.query.params'.FIRST_NAME],
+ #[message.inboundProperties.'http.query.params'.LAST_NAME])]]></db:parameterized-query>
+        </db:insert>
+        <set-payload value="DATA INSERTED" doc:name="Set Payload"/>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+        <rollback-exception-strategy maxRedeliveryAttempts="2" doc:name="Rollback Exception Strategy">
+            <set-payload value="TRANSACTION ROLLBACK" doc:name="Set Payload"/>
+            <logger message="TRANSACTION ROLLBACK" level="INFO" doc:name="Logger"/>
+            <on-redelivery-attempts-exceeded>
+                <logger message="Transaction Executed" level="INFO" doc:name="Logger"/>
+            </on-redelivery-attempts-exceeded>
+        </rollback-exception-strategy>
+    </flow>
+</mule>
